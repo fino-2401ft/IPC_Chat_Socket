@@ -61,8 +61,7 @@ int main() {
         return 0;
     }
 
-    printf("✅ %s\n", response);
-    print_menu();
+    printf("%s\n", response);
 
     handle_server_message(sock);
     handle_user_input(sock, username);

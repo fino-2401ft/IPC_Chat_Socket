@@ -298,43 +298,9 @@ int main() {
         fprintf(stderr, "[ERROR] Failed to open server.log: %s\n", strerror(errno));
         exit(1);
     }
-    // Tạo thư mục conversation đệ quy nếu cần
-    if (mkdir("conversation", 0777) == -1) {
-        if (errno != EEXIST) {
-            log_event("[ERROR] Failed to create conversation directory: %s", strerror(errno));
-            fprintf(stderr, "[ERROR] Failed to create conversation directory: %s\n", strerror(errno));
-            if (errno == ENOENT) {
-                log_event("Attempting to create parent directories...");
-                char *dir = "conversation";
-                char tmp[256];
-                char *p = NULL;
-                size_t len;
-
-                snprintf(tmp, sizeof(tmp), "%s", dir);
-                len = strlen(tmp);
-                if (tmp[len - 1] == '/')
-                    tmp[len - 1] = 0;
-                for (p = tmp + 1; *p; p++)
-                    if (*p == '/') {
-                        *p = 0;
-                        if (mkdir(tmp, 0777) == -1 && errno != EEXIST) {
-                            log_event("[ERROR] Failed to create directory %s: %s", tmp, strerror(errno));
-                            fprintf(stderr, "[ERROR] Failed to create directory %s: %s\n", tmp, strerror(errno));
-                            exit(1);
-                        }
-                        *p = '/';
-                    }
-                if (mkdir(tmp, 0777) == -1) {
-                    log_event("[ERROR] Failed to create final directory %s: %s", tmp, strerror(errno));
-                    fprintf(stderr, "[ERROR] Failed to create final directory %s: %s\n", tmp, strerror(errno));
-                    exit(1);
-                }
-            } else {
-                exit(1);
-            }
-        }
-    }
-    log_event("Conversation directory created or exists");
+    // Đảm bảo thư mục conversation tồn tại (sẽ được tìm/tạo tự động trong get_conversation_dir)
+    // Không cần tạo ở đây nữa vì get_conversation_dir() sẽ tự động xử lý
+    log_event("Server initialized, conversation directory will be managed automatically");
 
     load_users();
     load_groups();

@@ -1,6 +1,6 @@
 #ifndef CLIENT_UTILS_H
 #define CLIENT_UTILS_H
-
+#include <stddef.h>
 #define BUFFER_SIZE 1024
 
 // Biến global để track chế độ chat
@@ -12,5 +12,9 @@ void clear_screen();
 void show_chat_header(const char *target);
 void handle_server_message(int sock);
 void handle_user_input(int sock, const char *username);
+
+// Utility functions
+void trim_string(char *str);
+void parse_command(const char *input, char *target, size_t target_size, char *message, size_t message_size);
 
 #endif

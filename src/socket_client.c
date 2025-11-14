@@ -56,7 +56,7 @@ int main() {
     response[len] = '\0';
 
     if (strstr(response, "failed")) {
-        printf("❌ %s\n", response);
+        printf("%s\n", response);
         close(sock);
         return 0;
     }

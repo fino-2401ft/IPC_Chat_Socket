@@ -1,0 +1,76 @@
+[Thu Nov 13 21:37:21 2025] Server initialized, conversation directory will be managed automatically
+[Thu Nov 13 21:37:21 2025] Found data file at: ../data/user.txt
+[Thu Nov 13 21:37:21 2025] Loaded 6 users from user.txt
+[Thu Nov 13 21:37:21 2025] Found data file at: ../data/group.txt
+[Thu Nov 13 21:37:21 2025] Loaded 5 groups from group.txt
+[Thu Nov 13 21:37:21 2025] Server data loaded: 6 users, 5 groups
+[Thu Nov 13 21:37:21 2025] [ERROR] Bind failed on port 8080: Address already in use
+[Thu Nov 13 21:37:30 2025] Server initialized, conversation directory will be managed automatically
+[Thu Nov 13 21:37:30 2025] Found data file at: ../data/user.txt
+[Thu Nov 13 21:37:30 2025] Loaded 6 users from user.txt
+[Thu Nov 13 21:37:30 2025] Found data file at: ../data/group.txt
+[Thu Nov 13 21:37:30 2025] Loaded 5 groups from group.txt
+[Thu Nov 13 21:37:30 2025] Server data loaded: 6 users, 5 groups
+[Thu Nov 13 21:37:30 2025] Server listening on port 8080
+[Thu Nov 13 21:37:37 2025] New client connected: socket 5
+[Thu Nov 13 21:37:40 2025] Login attempt: username=qa
+[Thu Nov 13 21:37:40 2025] qa logged in
+[Thu Nov 13 21:37:50 2025] New client connected: socket 6
+[Thu Nov 13 21:37:53 2025] Login attempt: username=bob
+[Thu Nov 13 21:37:53 2025] bob logged in
+[Thu Nov 13 21:38:22 2025] Received from bob: |qa
+[Thu Nov 13 21:38:22 2025] Fetching conversation history for qa
+[Thu Nov 13 21:38:22 2025] Found conversation directory at: ../conversation
+[Thu Nov 13 21:38:22 2025] Attempting to read conversation file: ../conversation/conversation_bob_qa.txt
+[Thu Nov 13 21:38:22 2025] Sending history line: [Fri Nov  7 00:33:15 2025] bob: hi qa
+[Thu Nov 13 21:38:22 2025] Sending history line: [Sun Nov  9 07:01:35 2025] qa: eh bob
+[Thu Nov 13 21:38:22 2025] Sending history line: [Sun Nov  9 07:02:31 2025] bob: ok
+[Thu Nov 13 21:38:22 2025] Sending history line: [Sun Nov  9 07:03:15 2025] qa: 123
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 07:34:52 2025] bob: ok
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 07:35:22 2025] qa: 123 ok bob
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 07:42:46 2025] qa: ok
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 08:01:54 2025] qa: ok
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 08:40:51 2025] bob: ok
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 08:40:54 2025] bob: hihi
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 08:41:05 2025] qa: ok qa
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 08:41:16 2025] qa: okay
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 08:43:48 2025] qa: ok bob
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 08:44:12 2025] bob: ok qa
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 08:44:19 2025] bob: ok i see
+[Thu Nov 13 21:38:22 2025] Sending history line: [Wed Nov 12 08:55:06 2025] qa: kkll
+[Thu Nov 13 21:38:22 2025] Sending history line: [Thu Nov 13 14:19:37 2025] bob: hey
+[Thu Nov 13 21:38:22 2025] Sending history line: [Thu Nov 13 14:20:31 2025] qa: ok
+[Thu Nov 13 21:38:22 2025] Sent conversation history for qa to socket 6 (lines sent: 18)
+[Thu Nov 13 21:38:24 2025] Received from bob: /qa ok
+[Thu Nov 13 21:38:24 2025] Parsed command from bob: target=qa, msg='ok'
+[Thu Nov 13 21:38:24 2025] Sending private message to qa: ok
+[Thu Nov 13 21:38:24 2025] Saved conversation to ../conversation/conversation_bob_qa.txt: bob: ok
+[Thu Nov 13 21:38:24 2025] bob → qa: ok
+[Thu Nov 13 21:38:33 2025] Received from qa: |bob
+[Thu Nov 13 21:38:33 2025] Fetching conversation history for bob
+[Thu Nov 13 21:38:33 2025] Attempting to read conversation file: ../conversation/conversation_bob_qa.txt
+[Thu Nov 13 21:38:33 2025] Sending history line: [Fri Nov  7 00:33:15 2025] bob: hi qa
+[Thu Nov 13 21:38:33 2025] Sending history line: [Sun Nov  9 07:01:35 2025] qa: eh bob
+[Thu Nov 13 21:38:33 2025] Sending history line: [Sun Nov  9 07:02:31 2025] bob: ok
+[Thu Nov 13 21:38:33 2025] Sending history line: [Sun Nov  9 07:03:15 2025] qa: 123
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 07:34:52 2025] bob: ok
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 07:35:22 2025] qa: 123 ok bob
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 07:42:46 2025] qa: ok
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 08:01:54 2025] qa: ok
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 08:40:51 2025] bob: ok
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 08:40:54 2025] bob: hihi
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 08:41:05 2025] qa: ok qa
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 08:41:16 2025] qa: okay
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 08:43:48 2025] qa: ok bob
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 08:44:12 2025] bob: ok qa
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 08:44:19 2025] bob: ok i see
+[Thu Nov 13 21:38:33 2025] Sending history line: [Wed Nov 12 08:55:06 2025] qa: kkll
+[Thu Nov 13 21:38:33 2025] Sending history line: [Thu Nov 13 14:19:37 2025] bob: hey
+[Thu Nov 13 21:38:33 2025] Sending history line: [Thu Nov 13 14:20:31 2025] qa: ok
+[Thu Nov 13 21:38:33 2025] Sending history line: [Thu Nov 13 21:38:24 2025] bob: ok
+[Thu Nov 13 21:38:33 2025] Sent conversation history for bob to socket 5 (lines sent: 19)
+[Thu Nov 13 21:38:36 2025] Received from qa: /bob haha
+[Thu Nov 13 21:38:36 2025] Parsed command from qa: target=bob, msg='haha'
+[Thu Nov 13 21:38:36 2025] Sending private message to bob: haha
+[Thu Nov 13 21:38:36 2025] Saved conversation to ../conversation/conversation_bob_qa.txt: qa: haha
+[Thu Nov 13 21:38:36 2025] qa → bob: haha

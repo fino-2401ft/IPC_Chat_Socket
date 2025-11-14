@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <errno.h>
 #include <pthread.h>
 #include <limits.h>
@@ -16,6 +17,11 @@ int userCount = 0;
 int groupCount = 0;
 FILE *logFile = NULL;
 pthread_mutex_t file_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Client management
+Client clients[MAX_CLIENTS];
+int clientCount = 0;
+pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void log_event(const char *fmt, ...) {
     if (!logFile) {
@@ -136,6 +142,11 @@ void load_users() {
         exit(1);
     }
     while (fscanf(f, "%31[^:]:%31s\n", users[userCount].username, users[userCount].password) == 2) {
+        if (userCount >= 100) {
+            fprintf(stderr, "[WARNING] Maximum users limit (100) reached. Ignoring remaining users.\n");
+            log_event("[WARNING] Maximum users limit (100) reached");
+            break;
+        } 
         userCount++;
     }
     fclose(f);
@@ -160,6 +171,11 @@ void load_groups() {
                   groups[groupCount].groupId,
                   groups[groupCount].groupName,
                   groups[groupCount].members) == 3) {
+        if (groupCount >= 50) {
+            fprintf(stderr, "[WARNING] Maximum groups limit (50) reached. Ignoring remaining groups.\n");
+            log_event("[WARNING] Maximum groups limit (50) reached");
+            break;
+        }
         groupCount++;
     }
     fclose(f);
@@ -170,13 +186,24 @@ int is_user_in_group(const char *groupId, const char *username) {
     for (int i = 0; i < groupCount; i++) {
         if (strcmp(groups[i].groupId, groupId) == 0) {
             char tmp[256];
-            strcpy(tmp, groups[i].members);
+            strncpy(tmp, groups[i].members, sizeof(tmp) - 1);
+            tmp[sizeof(tmp) - 1] = '\0';
             char *tok = strtok(tmp, ",");
             while (tok) {
                 if (strcmp(tok, username) == 0)
                     return 1;
                 tok = strtok(NULL, ",");
             }
+        }
+    }
+    return 0;
+}
+
+// Kiểm tra xem groupId có tồn tại trong danh sách groups không
+int is_group_id(const char *groupId) {
+    for (int i = 0; i < groupCount; i++) {
+        if (strcmp(groups[i].groupId, groupId) == 0) {
+            return 1;
         }
     }
     return 0;
@@ -193,13 +220,7 @@ void save_conversation(const char *sender, const char *target, const char *msg, 
     }
 
     char filename[PATH_MAX];
-    if (isGroup)
-        snprintf(filename, sizeof(filename), "%s/conversation_%s.txt", conv_dir, target);
-    else {
-        const char *user1 = strcmp(sender, target) < 0 ? sender : target;
-        const char *user2 = strcmp(sender, target) < 0 ? target : sender;
-        snprintf(filename, sizeof(filename), "%s/conversation_%s_%s.txt", conv_dir, user1, user2);
-    }
+    get_conversation_filename(filename, sizeof(filename), sender, target, isGroup);
 
     FILE *f = fopen(filename, "a");
     if (!f) {
@@ -228,27 +249,15 @@ void save_conversation(const char *sender, const char *target, const char *msg, 
 void send_conversation_history(int sock, const char *sender, const char *target, int isGroup) {
     pthread_mutex_lock(&file_mutex);
     
-    // Lấy đường dẫn đến thư mục conversation đúng
-    const char* conv_dir = get_conversation_dir();
-    
     char filename[PATH_MAX];
-    if (isGroup)
-        snprintf(filename, sizeof(filename), "%s/conversation_%s.txt", conv_dir, target);
-    else {
-        const char *user1 = strcmp(sender, target) < 0 ? sender : target;
-        const char *user2 = strcmp(sender, target) < 0 ? target : sender;
-        snprintf(filename, sizeof(filename), "%s/conversation_%s_%s.txt", conv_dir, user1, user2);
-    }
+    get_conversation_filename(filename, sizeof(filename), sender, target, isGroup);
     log_event("Attempting to read conversation file: %s", filename);
 
     FILE *f = fopen(filename, "r");
     if (!f) {
         char msg[128];
         snprintf(msg, sizeof(msg), "[Server] No conversation history with %s.\n", target);
-        if (send(sock, msg, strlen(msg), 0) < 0) {
-            log_event("[ERROR] Failed to send no history message to socket %d: %s", sock, strerror(errno));
-            fprintf(stderr, "[ERROR] Failed to send no history message to socket %d: %s\n", sock, strerror(errno));
-        }
+        send_message_safe(sock, msg, "send no history message");
         pthread_mutex_unlock(&file_mutex);
         return;
     }
@@ -260,19 +269,19 @@ void send_conversation_history(int sock, const char *sender, const char *target,
         line[strcspn(line, "\n")] = 0;
         if (strlen(line) == 0) continue;
         log_event("Sending history line: %s", line);
-        if (send(sock, line, strlen(line), 0) < 0 || send(sock, "\n", 1, 0) < 0) {
-            log_event("[ERROR] Failed to send history line to socket %d: %s", sock, strerror(errno));
-            fprintf(stderr, "[ERROR] Failed to send history line to socket %d: %s\n", sock, strerror(errno));
+        
+        // Tạo message với newline
+        char formatted_line[512 + 2];
+        snprintf(formatted_line, sizeof(formatted_line), "%s\n", line);
+        
+        if (send_message_safe(sock, formatted_line, "send history line") < 0) {
             break;
         }
         lines_sent++;
     }
 
     if (lines_sent == 0) {
-        if (send(sock, "No messages found.\n", 19, 0) < 0) {
-            log_event("[ERROR] Failed to send no messages message to socket %d: %s", sock, strerror(errno));
-            fprintf(stderr, "[ERROR] Failed to send no messages message to socket %d: %s\n", sock, strerror(errno));
-        }
+        send_message_safe(sock, "No messages found.\n", "send no messages message");
     }
 
     if (fclose(f) != 0) {
@@ -281,4 +290,203 @@ void send_conversation_history(int sock, const char *sender, const char *target,
     }
     log_event("Sent conversation history for %s to socket %d (lines sent: %d)", target, sock, lines_sent);
     pthread_mutex_unlock(&file_mutex);
+}
+
+// ========================= UTILITY FUNCTIONS =========================
+
+int send_message_safe(int sock, const char *msg, const char *error_context) {
+    if (sock < 0 || !msg) {
+        return -1;
+    }
+    
+    size_t msg_len = strlen(msg);
+    if (msg_len == 0) {
+        return 0;
+    }
+    
+    if (send(sock, msg, msg_len, 0) < 0) {
+        if (error_context) {
+            log_event("[ERROR] Failed to %s on socket %d: %s", error_context, sock, strerror(errno));
+            fprintf(stderr, "[ERROR] Failed to %s on socket %d: %s\n", error_context, sock, strerror(errno));
+        } else {
+            log_event("[ERROR] Failed to send message on socket %d: %s", sock, strerror(errno));
+            fprintf(stderr, "[ERROR] Failed to send message on socket %d: %s\n", sock, strerror(errno));
+        }
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ * Tạo tên file conversation từ sender và target
+ * @param filename: Buffer để lưu tên file
+ * @param size: Kích thước buffer
+ * @param sender: Tên người gửi
+ * @param target: Tên người nhận hoặc group ID
+ * @param isGroup: 1 nếu là group, 0 nếu là private message
+ */
+void get_conversation_filename(char *filename, size_t size, const char *sender, const char *target, int isGroup) {
+    const char* conv_dir = get_conversation_dir();
+    
+    if (isGroup) {
+        snprintf(filename, size, "%s/conversation_%s.txt", conv_dir, target);
+    } else {
+        // Sắp xếp tên user theo thứ tự alphabet để đảm bảo tên file nhất quán
+        const char *user1 = strcmp(sender, target) < 0 ? sender : target;
+        const char *user2 = strcmp(sender, target) < 0 ? target : sender;
+        snprintf(filename, size, "%s/conversation_%s_%s.txt", conv_dir, user1, user2);
+    }
+}
+
+// ========================= CLIENT MANAGEMENT FUNCTIONS =========================
+
+Client *find_client_by_name(const char *username) {
+    pthread_mutex_lock(&clients_mutex);
+    Client *result = NULL;
+    for (int i = 0; i < clientCount; i++) {
+        if (strcmp(clients[i].username, username) == 0) {
+            result = &clients[i];
+            break;
+        }
+    }
+    pthread_mutex_unlock(&clients_mutex);
+    return result;
+}
+
+void remove_client(int socket) {
+    pthread_mutex_lock(&clients_mutex);
+    for (int i = 0; i < clientCount; i++) {
+        if (clients[i].socket == socket) {
+            log_event("%s disconnected", clients[i].username);
+            shutdown(clients[i].socket, SHUT_RDWR);
+            close(clients[i].socket);
+            for (int j = i; j < clientCount - 1; j++)
+                clients[j] = clients[j + 1];
+            clientCount--;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&clients_mutex);
+}
+
+int check_login(const char *username, const char *password) {
+    for (int i = 0; i < userCount; i++) {
+        if (strcmp(users[i].username, username) == 0 &&
+            strcmp(users[i].password, password) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+// ========================= MESSAGE SENDING FUNCTIONS =========================
+
+void broadcast(const char *sender, const char *msg) {
+    char buffer[BUFFER_SIZE];
+    snprintf(buffer, sizeof(buffer), "[%s -> ALL]: %s\n", sender, msg);
+    pthread_mutex_lock(&clients_mutex);
+    int count = clientCount;
+    Client local_clients[MAX_CLIENTS];
+    for (int i = 0; i < count; i++) {
+        local_clients[i] = clients[i];
+    }
+    pthread_mutex_unlock(&clients_mutex);
+    
+    for (int i = 0; i < count; i++) {
+        send_message_safe(local_clients[i].socket, buffer, "send broadcast");
+    }
+    log_event("%s broadcast: %s", sender, msg);
+}
+
+void send_private(const char *sender, const char *target, const char *msg) {
+    Client *receiver = find_client_by_name(target);
+    char buffer[BUFFER_SIZE];
+    if (receiver) {
+        snprintf(buffer, sizeof(buffer), "[PM %s → %s]: %s\n", sender, target, msg);
+        send_message_safe(receiver->socket, buffer, "send private message");
+        save_conversation(sender, target, msg, 0);
+        log_event("%s → %s: %s", sender, target, msg);
+    } else {
+        snprintf(buffer, sizeof(buffer), "[Server] User %s not found.\n", target);
+        Client *senderClient = find_client_by_name(sender);
+        if (senderClient) {
+            send_message_safe(senderClient->socket, buffer, "send error message");
+        }
+    }
+}
+
+void send_group_message(const char *sender, const char *groupId, const char *msg) {
+    char buffer[BUFFER_SIZE];
+    snprintf(buffer, sizeof(buffer), "[%s@%s]: %s\n", sender, groupId, msg);
+    pthread_mutex_lock(&clients_mutex);
+    int count = clientCount;
+    Client local_clients[MAX_CLIENTS];
+    for (int i = 0; i < count; i++) {
+        local_clients[i] = clients[i];
+    }
+    pthread_mutex_unlock(&clients_mutex);
+    
+    for (int i = 0; i < count; i++) {
+        if (is_user_in_group(groupId, local_clients[i].username)) {
+            send_message_safe(local_clients[i].socket, buffer, "send group message");
+        }
+    }
+    save_conversation(sender, groupId, msg, 1);
+    log_event("%s → GROUP %s: %s", sender, groupId, msg);
+}
+
+void show_menu(int sock) {
+    const char *menu =
+        "\n=== COMMAND MENU ===\n"
+        "/menu              : Show this menu\n"
+        "/users             : List online users\n"
+        "/groups            : List all groups\n"
+        "|<username>        : View chat history with user\n"
+        "|<groupId>         : View group chat history\n"
+        "/<username> <msg>  : Send private message\n"
+        "/<groupId> <msg>   : Send message to group\n"
+        "/esc               : Exit chat mode\n"
+        "/exit              : Logout\n";
+    send_message_safe(sock, menu, "send menu");
+}
+
+void show_users(int sock) {
+    char buffer[BUFFER_SIZE] = "=== Online Users ===\n";
+    size_t pos = strlen(buffer);
+    
+    pthread_mutex_lock(&clients_mutex);
+    int count = clientCount;
+    for (int i = 0; i < count && pos < sizeof(buffer) - 32; i++) {
+        int written = snprintf(buffer + pos, sizeof(buffer) - pos, "%s\n", clients[i].username);
+        if (written > 0 && (size_t)written < sizeof(buffer) - pos) {
+            pos += written;
+        } else {
+            break;  // Buffer đầy
+        }
+    }
+    pthread_mutex_unlock(&clients_mutex);
+    
+    send_message_safe(sock, buffer, "send user list");
+}
+
+void show_groups_for_user(int sock, const char *username) {
+    char buffer[BUFFER_SIZE] = "=== Your Groups ===\n";
+    size_t pos = strlen(buffer);
+    int found = 0;
+    
+    for (int i = 0; i < groupCount; i++) {
+        if (is_user_in_group(groups[i].groupId, username)) {
+            int written = snprintf(buffer + pos, sizeof(buffer) - pos, "%s - %s\n", 
+                                   groups[i].groupId, groups[i].groupName);
+            if (written > 0 && (size_t)written < sizeof(buffer) - pos) {
+                pos += written;
+                found = 1;
+            } else {
+                break;  // Buffer đầy
+            }
+        }
+    }
+    if (!found && pos < sizeof(buffer) - 30) {
+        snprintf(buffer + pos, sizeof(buffer) - pos, "(You are not in any groups)\n");
+    }
+    send_message_safe(sock, buffer, "send group list");
 }
